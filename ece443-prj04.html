@@ -1,0 +1,440 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="course.css">
+<title>ECE 443/518 Fall 2025 - Project 4</title>
+</head>
+<body>
+   
+<center>
+<p>
+<h1>ECE 443/518 Fall 2025 - Project 4</h1>
+<h1>Secure Web Communication with HTTPS</h1>
+</p>
+    
+<p><hr>
+<br>Report Due: 12/07 (Sun.), by the end of the day (Chicago time)
+<br>Late submissions will NOT be graded
+</p>
+</center>
+
+<hr><a name="objective" class="section">
+I. Objective</a>
+
+<p>
+In this project, you will learn to secure web communication with HTTPS connections.
+You will learn to use the OpenSSL tool to create and manage keys and certificates,
+and leverage Go to build HTTPS servers and clients to experiment with
+various scenarios for HTTPS server and client authentications.
+</p>
+
+<p>
+Download the project package <a href="prj04-go.zip">here</a>
+and unzip them into a directory.
+You will find three files server.ext, client.ext, go.work,
+and two subdirectories web-server and web-client.
+</p>
+
+<hr><a name="openssl" class="section">
+II. Setup Keys and Certificates Using OpenSSL</a>
+
+<p>
+While we have discussed OpenSSL in our lectures, here we provide an overview
+as well as additional information that is required for our project.
+</p>
+
+<p>
+A HTTPS server need to identify itself to clients, and clients may optionally
+identify themselves to servers as well.
+Since both identifications are done through the use of certiificates,
+we need to ask a certification authority (CA) to sign certificates
+for servers and clients.
+However,
+<a href="https://letsencrypt.org/docs/certificates-for-localhost/">
+no real CA </a> would sign certificates for our project.
+Therefore, we start by creating a self-signed root CA by ourselves.
+</p>
+
+<p>
+Open a terminal or a command-line console to run OpenSSL commands
+in the directory that you have unzipped the project package.
+</p>
+
+<p>
+The first step to setup a CA is to generate its private key.
+You will need to provide a pass phrase to protect it.
+<pre class="console">
+>openssl genpkey -algorithm RSA -out CA.key -aes256 -pkeyopt rsa_keygen_bits:4096
+...+.+......
++...+.......
+Enter PEM pass phrase:
+Verifying - Enter PEM pass phrase:
+</pre>
+
+<p>
+Then, create the self-signed root certificate.
+You will need to provide the pass phrase you have provided
+in the previous step to access the private key.
+<pre class="console">
+>openssl req -x509 -new -key CA.key -days 3650 -subj "/CN=MyRootCA" -out CA.pem
+Enter pass phrase for CA.key:
+</pre>
+</p>
+
+<p>
+Now, we are done with CA setup and you can inspect the root certificate of CA.
+<pre class="console">
+>openssl x509 -in CA.pem -text -noout
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: ...
+...
+</pre>
+</p>
+
+<p>
+Next, we are going to create a certificate for the server at localhost.
+Create its private key and then the Certificate Signing Request (CSR)
+<pre class="console">
+>openssl genpkey -algorithm RSA -out server.key
+.....+...
+.........
+
+>openssl req -new -key server.key -subj "/CN=localhost" -out server.csr
+</pre>
+The CA then signs the CSR to issue the server certificate.
+The file server.ext from the project package provides CA with
+the additional information required by X.509v3
+extensions for server authentications.
+You will need to provide the pass phrase you have provided early
+to access the private key of CA.
+<pre class="console">
+>openssl x509 -req -in server.csr -CA CA.pem -CAkey CA.key -CAcreateserial -out server.pem -days 365 -sha256 -extfile server.ext
+Certificate request self-signature ok
+subject=CN=localhost
+Enter pass phrase for CA.key:
+</pre>
+Now, the server certificate is ready for inspection and verification.
+<pre class="console">
+>openssl x509 -in server.pem -text -noout
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:...
+...
+
+>openssl verify -CAfile CA.pem server.pem
+server.pem: OK
+</pre>
+It is also very useful to know the SHA-256 fingerprint
+of this certificate as web browers and web clients
+usually use it to visually communicate the identity of the server.
+<pre class="console">
+>openssl x509 -in server.pem -noout -fingerprint -sha256
+sha256 Fingerprint=6C:96:F4:68:...
+</pre>
+</p>
+
+<p>
+Finally, you are going to create a certificate for yourself,
+which is very similar to that of creating a server certificate
+though you will need to provide your own identify.
+Create the private key and CSR as follows, making sure to
+use your own name for the "-subj" option.
+<pre class="console">
+>openssl genpkey -algorithm RSA -out client.key
+.....+...
+.........
+
+>openssl req -new -key client.key -subj "/CN=your-name" -out client.csr
+</pre>
+Use any text editor like Notepad to open the file client.ext
+from the project package
+and modify the line starting with "subjectAltName"
+to include your IllinoisTech email address.
+The CA then signs the CSR to issue the client certificate.
+You will need to provide the pass phrase you have provided early
+to access the private key of CA.
+<pre class="console">
+>openssl x509 -req -in client.csr -CA CA.pem -CAkey CA.key -CAcreateserial -out client.pem -days 365 -sha256 -extfile client.ext
+Certificate request self-signature ok
+subject=CN=your-name
+Enter pass phrase for CA.key:
+</pre>
+Make sure your name is correct (not as the one shown above).
+Now, the client certificate is ready for inspection and verification,
+and the SHA-256 fingerprint can be generated.
+<pre class="console">
+>openssl x509 -in client.pem -text -noout
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:...
+...
+
+>openssl verify -CAfile CA.pem client.pem
+client.pem: OK
+
+>openssl x509 -in client.pem -noout -fingerprint -sha256
+sha256 Fingerprint=DD:84:C1:A3:...
+</pre>
+Make sure your name and email address are correct from client.pem.
+</p>
+
+<p>
+Here are what you need to include or answer in your project report for this section:
+<ol>
+<li>
+Explain for which steps you will need to access CA's private key
+and how you can tell so when running the commands.
+</li>
+<li>
+Identify the names of the eight files for
+CA's private key and certificate,
+server's private key, CSR, and certificate,
+as well as client's private key, CSR, and certificate.
+Include the contents of these eight files into your project report
+(you can open the files and copy the content using any text editor
+like Notepad).
+</li>
+<li>
+Provide a screenshot showing the SHA-256 fingerprint of
+the server certificate.
+</li>
+<li>
+Provide a screenshot of inspecting the client certificate
+showing your name and email address,
+and a screenshot showing the SHA-256 fingerprint of
+the client certificate.
+</li>
+<li>
+In how many days will the certificates expire? Why do we set them differently
+for CA and servers/clients?
+</li>
+</ol>
+</p>
+
+<hr><a name="server" class="section">
+III. HTTPS Server Authentication</a>
+
+<p>
+With all certificates and keys being created, we are ready to
+experiments with HTTPS authentications.
+While most web browsers and web tools support both HTTPS server
+and client authentications, they are designed for use in daily scenarios.
+Therefore, we provide our Go implementaion of a web server and a web client
+to help us study how exactly keys and certificates are used in
+HTTPS authentications.
+This implementation includes the file go.work and two subdirectories
+web-server and web-client from the project package.
+</p>
+
+<p>
+You can run the web server and the web client as follows,
+using the "-help" option to show the usages.
+<pre class="console">
+>go run web-server -help                       
+Usage: web-server [options]
+Options:
+  -addr string
+        listen address (default "127.0.0.1:8080")
+  -cert string
+        server certificate (PEM) (default "your-server-certificate")
+  -client-ca string
+        CA to verify client certs (PEM). Empty = don't verify.
+  -key string
+        server private key (PEM) (default "your-server-private-key")
+
+>go run web-client -help
+Usage: web-client [options] <url>
+Options:
+  -ca string
+        CA option: "" (no CAs), or path to PEM
+  -cert string
+        Client certificate PEM (optional)
+  -key string
+        Client private key PEM (optional)
+</pre>
+</p>
+
+<p>
+Start the server with its private key and certificate
+on the default address.
+<pre class="console">
+>go run web-server -cert server.pem -key server.key
+2025/10/19 12:37:52 HTTPS listening on https://127.0.0.1:8080 (clientAuth=NoClientCert)
+</pre>
+</p>
+
+<p>
+Now, open a second terminal to run the client (so the server will continue running).
+Try to connect to the server without providing the CA certificate.
+<pre class="console">
+>go run web-client https://127.0.0.1:8080      
+2025/10/19 12:41:46 request failed: Get "https://127.0.0.1:8080": tls: failed to verify certificate: x509: certificate signed by unknown authority
+exit status 1
+</pre>
+<font color="red">As expected, the connection fails
+because the client has no way to verify server's certificate.
+</font>
+</p>
+
+<p>
+Connect to the server again with the CA certificate and
+the client should connect successfully and receive a response
+from the server as indicated by "HTTP 200 OK".
+<pre class="console">
+>go run web-client -ca CA.pem https://127.0.0.1:8080
+=== TLS Summary ===
+HTTP Protocol: HTTP/1.1
+Cipher Suite: 0x1301
+Server Cert Subject: CN=localhost
+Server Cert Issuer : CN=MyRootCA
+Server Cert Fingerprint (SHA-256): 6C96F468...
+Server verification: true
+====================
+HTTP 200 OK
+
+{"message":"no client certificate was provided"}
+</pre>
+</p>
+
+Here are what you need to include or answer in your project report for this section:
+<ol>
+<li>
+What happens if you start the server without providing its private key or certificate?
+Provide a screenshot to explain your answer.
+</li>
+<li>
+Why is it NOT necessary to provide server's CA certicifate when starting the server?
+</li>
+<li>
+For the first time the client connected to the server without providing the CA certificate,
+why is it expected that the connection fails?
+</li>
+<li>
+For the second time the client successfully connected to the server,
+the TLS Summary mentioned the subject CN and the issuer CN.
+Where these fields come from?
+Explain in which step we have included them into the certificate
+and how the client obtains and verifies them.
+</li>
+<li>
+Provide a screenshot showing the successful connection with
+a matching SHA-256 fingerprint for the server certificate.
+</li>
+</ol>
+</p>
+
+<hr><a name="client" class="section">
+IV. HTTPS Client Authentication</a>
+
+<p>
+With the server still running,
+allow the client to connect with its private key and certificate.
+<pre class="console">
+>go run web-client -ca CA.pem -key client.key -cert client.pem https://127.0.0.1:8080
+=== TLS Summary ===
+HTTP Protocol: HTTP/1.1
+Cipher Suite: 0x1301
+Server Cert Subject: CN=localhost
+Server Cert Issuer : CN=MyRootCA
+Server Cert Fingerprint (SHA-256): 6C96F468...
+Server verification: true
+====================
+HTTP 200 OK
+
+{"message":"no client certificate was provided"}
+</pre>
+<font color="red">
+Why the server doesn't accept the certificate from the client?
+</font>
+This is because we start the server without providing the certificate
+of the root CA for clients.
+</p>
+
+<p>
+Use Ctrl+C to stop the server and restart it with the certificate
+of the root CA for clients.
+<pre class="console">
+>go run web-server -cert server.pem -key server.key -client-ca CA.pem
+2025/10/19 13:30:45 HTTPS listening on https://127.0.0.1:8080 (clientAuth=VerifyClientCertIfGiven)
+</pre>
+Now let the client connects with its private key and certificate,
+and the server should be able to identify it.
+<pre class="console">
+>go run web-client -ca CA.pem -key client.key -cert client.pem https://127.0.0.1:8080
+=== TLS Summary ===
+HTTP Protocol: HTTP/1.1
+Cipher Suite: 0x1301
+Server Cert Subject: CN=localhost
+Server Cert Issuer : CN=MyRootCA
+Server Cert Fingerprint (SHA-256): 6C96F468...
+Server verification: true
+====================
+HTTP 200 OK
+
+{
+  "subject": "CN=your-name",
+  "issuer": "CN=MyRootCA",
+  "serialNumber": "9b5f678f36ee770512f688e2d64349c94ff4ed3",
+  "notBefore": "2025-10-19T17:57:52Z",
+  "notAfter": "2026-10-19T17:57:52Z",
+  "emailAddresses": [
+    "your-illinoistech-email"
+  ],
+  "fingerprint": "DD84C1A3..."
+}
+</pre>
+</p>
+
+<p>
+Here are what you need to include or answer in your project report for this section:
+<ol>
+<li>
+What happens if you start the client without providing its private key or certificate?
+Include a screenshot to explain your answer.
+</li>
+<li>
+We use the same CA for both server and client identification.
+Can we use two different CAs, one for
+server identification and one for client identification? Why?
+</li>
+<li>
+The HTTPS response in JSON format provides a lot of information
+for the client. Where those fields come from?
+Explain in which step we have included them into the certificate
+and how the server obtains and verifies them.
+</li>
+<li>
+Provide a screenshot showing the successful client authentication
+with matching SHA-256 fingerprints for both the server
+and the client certificates. It should also show
+your name and email address in the HTTPS response.
+</li>
+<li>
+What happens if you use the client to connect to https://www.illinoistech.edu?
+Provide a screenshot and explain your findings.
+</li>
+</ol>
+</p>
+
+<hr><a name="deliverable" class="section">
+V. Deliverables</a>
+
+<p>
+Complete the tasks for Section II, III, IV (5 points each),
+include them in a project report in .doc/.docs or .pdf format,
+and submit it to Canvas before the deadline.
+</p>
+
+<p><font color="red">
+The project should be done individually. You can discuss
+the project with other students but all the files
+and writings should be your OWN.
+PLAGIARISM and called for DISCIPLINARY ACTION.
+NEVER share your files and reports with others.
+</font></p>
+
+  </body>
+</html>
