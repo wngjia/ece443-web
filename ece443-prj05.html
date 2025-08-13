@@ -1,0 +1,219 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="course.css">
+<title>ECE 443/518 Fall 2024 - Project 5</title>
+</head>
+<body>
+   
+<center>
+<p>
+<h1>ECE 443/518 Fall 2025 - Project 5</h1>
+<h1>Smart Contract Challenge</h1>
+</p>
+
+<p><hr>
+<br>Report Due: 12/07 (Sun.), by the end of the day (Chicago time)
+<br>Late submissions will NOT be graded
+</p>
+</center>
+
+<hr><a name="objective" class="section">
+I. Objective</a>
+
+<p>
+A virual treasure box is created as a smart contract on the Ethereum blockchain.
+Open it to claim the prize utilizing the knowledge you have learned from this course!
+</p>
+
+<p>
+<font color="red">
+We don't actually require you to deploy smart contracts and to interact
+with them on the actual Ethereum blockchain as that could cost you real
+money and is slow for development and testing.
+As a common practice discussed later, an Ethereum simulator should
+be used instead.
+</font>
+</p>
+
+<hr><a name="treasurebox" class="section">
+II. The TreasureBox Smart Contract</a>
+
+<p>
+Here is the smart contract <a href="TreasureBox.sol">TreasureBox.sol</a>.
+There are two functions 'register' and 'unlock'. You will need to
+first call the function 'register' to register your CWID with the
+treasure box and then call the function 'unlock' to open the
+box with a code. Once the box is opened, you can call 'register'
+again, which will generate a message showing you have already
+unlocked the box.
+</p>
+
+<p>
+For example, if your CWID is A12345678,
+you will call 'register(12345678)' first (the 'register' function
+only take an interger as the parameter so you don't call it with
+a string 'A12345678').
+The code to open the treasure box for A12345678 is 77472471525
+so you will call 'unlock(77472471525)' to open it.
+Call 'register(12345678)' again to verify the box is open.
+</p>
+
+<p>
+The smart contract allows you to call the two functions in any order
+for any number of times, though it will generate error messages
+if you don't follow the above protocol.
+</p>
+
+<p>
+While not absolutely necessary, testing the smart contract
+in an Ethereum simulator will be very helpful for
+you to understand how it works. The most convenient Ethereum
+simulator is <a href="https://remix.ethereum.org">Remix</a>
+that runs directly inside your browser. I have included
+a short tutorial on how to use it at the end of this
+instruction.
+</p>
+
+<p>
+Here are what you need to answer
+in your project report for this section:
+<ol>
+<li>
+Explain the purpose of the mapping member 'unlocked' in the smart contract.
+What is the address 'msg.sender' refering to? Is it your CWID?
+</li>
+<li>
+Explain how the mapping member 'registered' works in the smart contract.
+In particular, is it possible for a single account to unlock multiple
+CWIDs? Moreover, is it possible for multiple accounts to unlock the same CWID?
+</li>
+<li>
+Explain how 'text' and 'hash' are computed in the function unlock.
+</li>
+<li>
+What is the constant 0xfffffff0 for in the function unlock?
+What if we simply compare bytes4(text) with bytes4(hash)?
+</li>
+<li>
+When will the treasure box unlock for a particular CWID?
+Will the code be unique?
+</li>
+</ol>
+</p>
+
+<hr><a name="so" class="section">
+III. Finding the Code for Your CWID</a>
+
+<p>
+Since your CWID is not A12345678, the code to open your box
+is not 77472471525. What is your code?
+<font color="red">
+Clearly you should not modify the smart contract source code
+to use any code you would like.
+</font>
+</p>
+
+<p>
+You will need to find the code for your CWID for this project.
+Formulate the condition to unlock the treasure box for your CWID
+as an equation and write a program to solve it via a brute-force algorithm.
+You may use part of your program from Project 1.
+Depending how efficient your program is
+and whether it can utilize all computational
+power available on modern multicore processors
+via multi-threading and multi-processing, it may take
+from less than a minutes to over an hour to find your code.
+</p>
+
+<hr><a name="deliverable" class="section">
+IV. Deliverables</a>
+
+<p>
+Submit a project report in .doc/.docs or .pdf format
+to Canvas before the deadline,
+providing the following:
+<ul>
+<li>
+(5 points) Anwsers to questions of Section II.
+</li>
+<li>
+(3 points) A reasonable program to find the code for your CWID.
+</li>
+<li>
+(3 points) Explain how your program works and any challenges you have meet
+when developing it.
+</li>
+<li>
+(4 points) The code to open the treasure box for your CWID and a screenshot
+showing that the code actually works.
+</li>
+</ul>
+</p>
+
+<p><font color="red">
+The project should be done individually. You can discuss
+the project with other students but all the source code
+and writings should be your OWN.
+PLAGIARISM and called for DISCIPLINARY ACTION.
+NEVER share your source code and reports with others.
+</font>
+
+<hr><a name="tutorial" class="section">
+V. Remix Tutorial (Optional)</a>
+
+<p>
+Use your browser to open <a href="https://remix.ethereum.org">Remix</a>.
+By default it should open "File Explorers" on the left. Use the upload button
+to upload the smart contract source file.
+<p align=center><img src="remix1.jpg"></img></p>
+
+<p>
+Open "TreasureBox.sol" from "File Explorers".
+Move to "Solidity Compiler" on the left.
+Click "Compile TreasureBox.sol" and then the contract TreasureBox should appear.
+<p align=center><img src="remix2.jpg"></img></p>
+
+<p>
+Move to "Deploy &amp; Run Transactions" on the left.
+Make sure the environment is "Remix VM" or "Javascript VM", which creates
+an Ethereum simulator in your browser.
+Click "Deploy" and the the contract TreasureBox is deployed
+to the Ethereum simulator.
+<p align=center><img src="remix3.jpg"></img></p>
+
+<p>
+Expand the deployed TreasureBox smart contract and you will see the
+two functions "register" and "unlock".
+Put "12345678" as the parameter to "register" and click it to call it.
+A new log messge will appear to confirm that the transaction is completes correctly.
+<p align=center><img src="remix4.jpg"></img></p>
+
+<p>
+You can then call "unlock" with a code. Using a wrong code like "111"
+will not cause the transaction to fail but if you check the details of
+the log message you will see "unlock" returns false, indicating the code
+is wrong.
+<p align=center><img src="remix5.jpg"></img></p>
+
+<p>
+If you call "unlock" with the correct code "77472471525",
+the log message will show "unlock" returning true.
+Our smart contract also generates additional log messages
+to help you understand it.
+<p align=center><img src="remix6.jpg"></img></p>
+
+<p>
+Now if you call "register" again with "12345678", you will get
+the message "You have already unlocked the box." showing that
+you have successfully open the box.
+<p align=center><img src="remix7.jpg"></img></p>
+
+<p>
+The TreasureBox smart contract allows one Ethereum account
+to register and unlock for a single CWID only. You should change
+to a different account to test with your own CWID. There is no need
+to deploy the smart contract again.
+<p align=center><img src="remix8.jpg"></img></p>
+
+  </body>
+</html>
