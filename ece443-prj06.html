@@ -1,0 +1,199 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="course.css">
+<title>ECE 443/518 Fall 2025 - Project 6</title>
+</head>
+<body>
+   
+<center>
+<p>
+<h1>ECE 443/518 Fall 2025 - Project 6</h1>
+<h1>Garbled Circuits</h1>
+</p>
+    
+<p><hr>
+<br>Report Due: 12/10 (Wed.), by the end of the day (Chicago time)
+<br>Late submissions will NOT be graded
+</center>
+</p>
+
+<hr><a name="overview" class="section">
+I. Overview</a>
+
+<p>
+Garbled circuit enables two parties to compute a function collaboratively
+without revealing their own secrets. In this project, we are going to follow
+our lectures to implement this mechanism with the following modifications.
+</p>
+
+<ol>
+<li>
+Instead of using 5-bit random strings to represent 0 and 1 for wires,
+we are going to use 128-bit random strings to make our circuits more secure.
+</li>
+<li>
+Instead of using modular addition/subtraction to encrypt and decrypt truth tables for gates,
+we are going to use the AES cipher with 256-bit key and 128-bit block.
+Since all of our gates are 2-input gates,
+this is a perfect fit - the two input signals have a total of 256 bits
+for the key, and the output signal, before and after encryption, has 128 bits.
+</li>
+<li>
+For simplicity, we setup input signals directly instead of implementing oblivious transfer.
+</li>
+</ol>
+
+<hr><a name="alice" class="section">
+II. Alice the Garbler</a>
+
+<p>
+For your conveniece, we have implement part of the garbled circuit mechanism
+including the garbler, input/output, and a few tests, which can be downloaded
+<a href="prj06-go.zip">here</a>.
+</p>
+    
+<p>
+The implementation of the garbler is in the file alice.go and below are the details.
+<ul>
+<li>
+You are not supposed to modify this file before completing Section III.
+</li>
+<li>
+We number the wires in the circuit from 0 to n+m-1 where n is the number of the input bits
+and m is the number of the gates.
+</li>
+<li>
+Each Wire object contains two random 128-bit values, one for 0 and one for 1.
+Alice will generate these values in the function encryptWires and cannot reveal the wires array to Bob.
+</li>
+<li>
+Each Gate object contains the logic function, which can only be NAND for now,
+as well as the id's of the two input wires and the output wire.
+Since these values define the well-known circuit for both Alice and Bob,
+they are not supposed to be changed once initialized in gc.go .
+</li>
+<li>
+On the other hand, Alice will generate the garbled truth table for each Gate object
+in the function encryptGates. Since Bob will use these tables to evaluate the garbled circuit,
+please study this function to understand how to calculate the selection bits
+and how to encrypt (so decrypt) the truth table rows.
+Note that we use the AES block cipher directly without any mode of operations like CBC or GCM
+- this is different than Project 2 where the AES-GCM mode is used for AEAD.
+</li>
+<li>
+For 128-bit signals, we only print the first two bytes in the log messages for troubleshooting.
+</li>
+</ul>
+</p>
+  
+<hr><a name="bob" class="section">
+III. Implement Bob the Evaluator</a>
+
+<p>
+Now it is your turn to complete the mechanism by implementing the evaluateGarbledCircuit function
+in bob.go . This is the only function you will need to modify for this section.
+In this function, a few lines of code are provided and below are the details.
+</p>
+
+<ul>
+<li>
+We first create the signals array to hold one signal per wire.
+</li>
+<li>
+Then, the input signals are copied to the array.
+</li>
+<li>
+Now you need to write code evaluate the circuit by computing the gate output
+one by one. We setup the gates array in a way such that it is guaranteed
+that when you process a gate following its order in the gates array,
+both of its input signals are available already. As the hint in the code suggest,
+you will need to use a loop, and for each iteration you will need to
+first read the two input signals, then do some calculation, and finally
+update the signals array with the gate output.
+</li>
+<li>
+The last signal is the final output of the circuit.
+</li>
+</ul>
+
+<p>
+Once you have implemented the function evaluateGarbledCircuit, you are ready to
+test your code by running the go package using "go run ." . There are 10 testcases
+in gc.go which are executed from the main function. The program will abort
+for any error during the execution but otherwise you will be able to
+see the messages "test 1 pass!" etc. indicating the tests pass.
+Note that you are not supposed to modify this file for this section.
+</p>
+
+<hr><a name="newgates" class="section">
+IV. Support Additional Gate Types</a>
+
+<p>
+Currently only NAND gates are supported.
+Although it is possible to implement any boolean logic with NAND gates only,
+it is not convenient at least and it is actually not efficient for garbled circuits.
+Please modify the code to support at least two kinds of logic gates from NOR, AND,
+OR, and XOR.
+</p>
+
+<p>
+For this section you will need to modify alice.go for the two kinds of gates you choose
+to support. There is no need to modify bob.go after completing Section III.
+Then you will need to add 5 new testcases to gc.go and at least one testcase
+should use all the three kinds of gates (NAND and the two chosen by you).
+</p>
+
+<hr><a name="deliverable" class="section">
+V. Deliverables</a>
+
+<p>
+Submit the following to Canvas for this project.
+</p>
+
+<ol>
+<li>
+5 Points: A zip file including all your code and a project report
+explaining your code and approach.
+The report should also include screenshots showing whether the testcases
+are passed or not.
+</li>
+<li>
+5 Points: 0.5 point for each passing testcase
+of the original 10 testcases of Section III.
+</li>
+<li>
+5 Points: 1 point for each passing testcase
+of the 5 new testcases of Section IV.
+</li>
+</ol>
+
+<hr><a name="ot" class="section">
+VI. Bonus: Oblivious Transfer</a>
+
+<p>
+Implement oblivious transfer to setup input signals for Bob.
+You will need to investigate how to use the rsa package in Go.
+You should also provide code to test your implementations.
+</p>
+
+<p>
+Submit the following to Canvas together with your project submissions
+</p>
+
+<ol>
+<li>
+3 Points:  source code for implementation and testing,
+screenshots showing how it works,
+and a small paragraph explaining your approach.
+</li>
+</ol>
+
+<p><font color="red">
+The project should be done individually. You can discuss
+the project with other students but all the source code
+and writings should be your OWN.
+PLAGIARISM and called for DISCIPLINARY ACTION.
+NEVER share your source code and reports with others.
+</font>
+  </body>
+</html>
